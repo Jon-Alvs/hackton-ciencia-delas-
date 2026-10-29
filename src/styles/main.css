@@ -1,0 +1,553 @@
+:root {
+  --bg: #0b1118;
+  --surface: #1b2733;
+  --text: #e9eef3;
+  --muted: #9fb0bf;
+  --accent: #e8a33d;
+  --on-accent: #1a1204;
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+}
+
+body {
+  display: grid;
+  place-items: center;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+  overflow: hidden;
+}
+
+/* Palco 16:9 que cabe na janela inteira, com barras nas sobras. */
+.stage {
+  position: relative;
+  width: min(100vw, calc(100vh * 16 / 9));
+  aspect-ratio: 16 / 9;
+  container-type: inline-size;
+  touch-action: none;
+  overflow: hidden; /* tarefas nascem abaixo da tela e sobem */
+}
+
+#game {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Camada de interface. O tamanho da fonte acompanha a largura do palco (960px = 16px). */
+.ui {
+  position: absolute;
+  inset: 0;
+  font-size: 1.6667cqw;
+  pointer-events: none;
+}
+
+.ui > * {
+  pointer-events: auto;
+}
+
+.panel {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  width: min(34em, 86%);
+  padding: 2em;
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+  background: var(--surface);
+  border: 1px solid #33475a;
+  border-radius: 0.5em;
+}
+
+.panel h1,
+.panel h2 {
+  margin: 0;
+  line-height: 1.15;
+}
+
+.panel h1 {
+  font-size: 2em;
+}
+
+.panel h2 {
+  font-size: 1.5em;
+}
+
+.panel p {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.button {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.7em 1.2em;
+  border: 0;
+  border-radius: 0.4em;
+  background: var(--accent);
+  color: var(--on-accent);
+  cursor: pointer;
+}
+
+.button-secondary {
+  background: transparent;
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px #4a6073;
+}
+
+.button:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+
+/* ─────────── Introdução cinematográfica em quadros ─────────── */
+.title-panel {
+  background: linear-gradient(145deg, #252036, #1b202e);
+  border: 1px solid rgba(233, 205, 221, 0.22);
+  border-radius: 1em;
+  box-shadow: 0 1.5em 4em rgba(0, 0, 0, .34);
+  text-align: center;
+  gap: 1.1em;
+}
+
+.title-panel h1 {
+  color: #fff2f7;
+  font-family: Georgia, 'Times New Roman', serif;
+  letter-spacing: -.035em;
+}
+
+.title-subtitle {
+  margin: 0;
+  color: #c9c0d5;
+  line-height: 1.55;
+}
+
+.title-panel .button {
+  align-self: center;
+  min-width: 13em;
+  border-radius: 999px;
+  background: linear-gradient(110deg, #f0c7d8, #e6b87d);
+  color: #2b1e2d;
+}
+
+.cutscene {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2em;
+  padding: 2.5% 4%;
+  overflow: hidden;
+  color: #f8f1f6;
+  background:
+    radial-gradient(ellipse at 78% 45%, rgba(155, 111, 166, .15), transparent 42%),
+    linear-gradient(120deg, rgba(13, 17, 30, .95), rgba(31, 23, 44, .89));
+  animation: cutscene-fade-in .45s ease both;
+}
+
+.cutscene-top,
+.cutscene-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1em;
+}
+
+.cutscene-brand {
+  color: #efc6d9;
+  font-size: .75em;
+  font-weight: 800;
+  letter-spacing: .22em;
+}
+
+.cutscene-skip {
+  border: 1px solid rgba(245, 227, 239, .24);
+  border-radius: 999px;
+  padding: .6em 1em;
+  background: rgba(255, 255, 255, .04);
+  color: #d7cbdc;
+  font: inherit;
+  font-size: .78em;
+  cursor: pointer;
+}
+
+.cutscene-progress {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: .45em;
+  width: 100%;
+}
+
+.cutscene-progress span {
+  height: 3px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, .15);
+  transition: background .35s ease, box-shadow .35s ease;
+}
+
+.cutscene-progress span.is-active {
+  background: #edc2d5;
+  box-shadow: 0 0 1em rgba(237, 194, 213, .35);
+}
+
+.cutscene-content {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr);
+  align-items: center;
+  gap: 3%;
+}
+
+.cutscene-copy {
+  max-width: 35em;
+  padding: 1em 0;
+  animation: cutscene-copy-in .55s ease both;
+}
+
+.cutscene-eyebrow {
+  margin: 0 0 1.2em;
+  color: #e6b77e;
+  font-size: .72em;
+  font-weight: 800;
+  letter-spacing: .16em;
+}
+
+.cutscene-copy h1 {
+  max-width: 10ch;
+  margin: 0 0 .45em;
+  color: #fff4f8;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2em, 5.2cqw, 4.5em);
+  line-height: .99;
+  letter-spacing: -.045em;
+}
+
+.cutscene-body {
+  max-width: 37em;
+  margin: 0 0 1em;
+  color: #e3dce9;
+  font-size: clamp(.9em, 1.45cqw, 1.22em);
+  line-height: 1.6;
+}
+
+.cutscene-detail {
+  max-width: 36em;
+  margin: 0;
+  padding-left: 1em;
+  border-left: 2px solid #d8a9c1;
+  color: #bcb1c8;
+  font-size: .88em;
+  line-height: 1.55;
+}
+
+.cutscene-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 12em;
+  max-height: 30em;
+  overflow: hidden;
+  border: 1px solid rgba(241, 215, 236, .2);
+  border-radius: 1.2em;
+  background:
+    radial-gradient(ellipse at 50% 45%, rgba(219, 180, 211, .13), transparent 56%),
+    linear-gradient(145deg, rgba(255,255,255,.055), rgba(255,255,255,.015));
+  box-shadow: inset 0 0 3em rgba(0, 0, 0, .15), 0 1em 3em rgba(0, 0, 0, .14);
+  animation: cutscene-art-in .7s ease both;
+}
+
+.art-glow {
+  position: absolute;
+  width: 70%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(224, 187, 211, .2), transparent 70%);
+  filter: blur(3px);
+}
+
+.art-object {
+  position: relative;
+  z-index: 1;
+  width: 72%;
+  aspect-ratio: 1.15;
+  transition: transform .6s ease;
+}
+
+.art-caption {
+  position: absolute;
+  bottom: 1em;
+  left: 1em;
+  right: 1em;
+  color: rgba(246, 231, 242, .65);
+  font-size: .66em;
+  letter-spacing: .07em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.art-earth .art-object::before {
+  content: '';
+  position: absolute;
+  width: 62%;
+  aspect-ratio: 1;
+  left: 19%;
+  top: 13%;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at 35% 35%, rgba(184, 225, 228, .95) 0 5%, transparent 6%),
+    radial-gradient(ellipse at 62% 45%, #8cc3b4 0 10%, transparent 11%),
+    radial-gradient(ellipse at 36% 64%, #6d9e92 0 14%, transparent 15%),
+    radial-gradient(circle at 35% 30%, #88c7df, #426da0 62%, #27395f);
+  box-shadow: 0 0 2.5em rgba(107, 166, 209, .4), inset -.8em -.6em 1em rgba(11, 14, 34, .55);
+}
+.art-earth .art-object::after {
+  content: '';
+  position: absolute;
+  width: 85%;
+  height: 18%;
+  left: 7%;
+  top: 43%;
+  border-top: 1px solid rgba(230, 216, 245, .65);
+  border-radius: 50%;
+  transform: rotate(-24deg);
+  box-shadow: 0 -1.4em 0 -0.5em rgba(230, 216, 245, .22);
+}
+
+.art-portrait .art-object::before {
+  content: '';
+  position: absolute;
+  width: 34%;
+  height: 39%;
+  left: 33%;
+  top: 12%;
+  border-radius: 48% 48% 42% 42%;
+  background: linear-gradient(120deg, #e8c4b1, #b67f75);
+  box-shadow: 0 -1.1em 0 -.12em #332b3c;
+}
+.art-portrait .art-object::after {
+  content: '0101  1010  0011\A APOLLO  /  GUIDANCE\A 1010  0110  1001';
+  white-space: pre;
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  bottom: 3%;
+  padding: .8em .4em;
+  border: 1px solid rgba(227, 185, 215, .32);
+  border-radius: .5em;
+  background: rgba(20, 20, 37, .8);
+  color: #c8c6e8;
+  font: 700 .7em/1.7 ui-monospace, monospace;
+  text-align: center;
+  letter-spacing: .09em;
+}
+
+.art-code .art-object {
+  border: 1px solid rgba(222, 187, 219, .55);
+  border-radius: .7em;
+  background: linear-gradient(150deg, #202d3b, #121b29);
+  box-shadow: 0 1em 2em rgba(0, 0, 0, .3);
+}
+.art-code .art-object::before {
+  content: 'APOLLO GUIDANCE COMPUTER\A > SYSTEM CHECK\A > PRIORITY: HIGH\A > EXECUTIVE RESTART\A > MISSION CONTINUES';
+  white-space: pre;
+  position: absolute;
+  inset: 10%;
+  color: #b8e1ce;
+  font: 700 .68em/2 ui-monospace, monospace;
+  text-shadow: 0 0 .8em rgba(127, 219, 181, .25);
+}
+.art-code .art-object::after {
+  content: '1202';
+  position: absolute;
+  right: 8%;
+  top: 8%;
+  padding: .25em .45em;
+  border-radius: .25em;
+  background: #7d364e;
+  color: #fff1f6;
+  font: 800 .7em ui-monospace, monospace;
+}
+
+.art-moon .art-object::before {
+  content: '';
+  position: absolute;
+  left: -12%;
+  right: -12%;
+  bottom: 0;
+  height: 36%;
+  border-radius: 50% 50% 0 0;
+  background:
+    radial-gradient(circle at 28% 30%, rgba(72, 64, 82, .35) 0 4%, transparent 5%),
+    radial-gradient(circle at 68% 45%, rgba(72, 64, 82, .3) 0 7%, transparent 8%),
+    linear-gradient(180deg, #d9d0d6, #8d8998);
+  box-shadow: 0 -1em 2em rgba(215, 198, 222, .12);
+}
+.art-moon .art-object::after {
+  content: '';
+  position: absolute;
+  left: 37%;
+  top: 17%;
+  width: 26%;
+  height: 38%;
+  background: linear-gradient(90deg, #b5a6a3, #f0d7b0 45%, #877c8a);
+  clip-path: polygon(35% 0, 65% 0, 70% 24%, 100% 34%, 100% 48%, 77% 48%, 76% 78%, 100% 100%, 0 100%, 24% 78%, 23% 48%, 0 48%, 0 34%, 30% 24%);
+  filter: drop-shadow(0 0 1em rgba(239, 196, 147, .28));
+}
+
+.cutscene-bottom {
+  padding-top: .4em;
+}
+
+.cutscene-hint {
+  color: rgba(225, 215, 232, .54);
+  font-size: .66em;
+  letter-spacing: .1em;
+}
+
+.cutscene-next {
+  min-width: 10em;
+  border-radius: 999px;
+  background: linear-gradient(110deg, #efc5d7, #e6bd86);
+  color: #2d2030;
+  box-shadow: 0 .4em 1.5em rgba(232, 185, 209, .15);
+}
+
+@keyframes cutscene-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes cutscene-copy-in {
+  from { opacity: 0; transform: translateY(.7em); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes cutscene-art-in {
+  from { opacity: 0; transform: translateX(1em) scale(.98); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@media (max-width: 700px) {
+  .cutscene {
+    padding: 4%;
+    gap: .8em;
+  }
+  .cutscene-content {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(8em, .72fr);
+    gap: .7em;
+  }
+  .cutscene-copy {
+    padding: .4em 0;
+  }
+  .cutscene-copy h1 {
+    max-width: 14ch;
+    font-size: clamp(1.7em, 7cqw, 3em);
+  }
+  .cutscene-body {
+    font-size: .9em;
+    line-height: 1.4;
+  }
+  .cutscene-detail {
+    font-size: .78em;
+  }
+  .cutscene-art {
+    min-height: 8em;
+    border-radius: .8em;
+  }
+  .art-object {
+    max-height: 90%;
+  }
+  .cutscene-hint {
+    max-width: 45%;
+    line-height: 1.5;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cutscene,
+  .cutscene-copy,
+  .cutscene-art {
+    animation: none !important;
+  }
+}
+
+
+/* ─────────── Encerramento narrativo ─────────── */
+.ending-panel {
+  width: min(40em, 88%);
+  gap: 1em;
+  padding: 2.3em;
+  background: linear-gradient(145deg, rgba(37, 32, 54, .97), rgba(24, 27, 42, .98));
+  border: 1px solid rgba(233, 205, 221, .24);
+  border-radius: 1em;
+  box-shadow: 0 1.5em 4em rgba(0, 0, 0, .35);
+  animation: cutscene-copy-in .5s ease both;
+}
+.ending-eyebrow {
+  margin: 0;
+  color: #e6b77e !important;
+  font-size: .72em;
+  font-weight: 800;
+  letter-spacing: .16em;
+}
+.ending-panel h2 {
+  color: #fff3f8;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 2.5em;
+  letter-spacing: -.04em;
+}
+.ending-panel > p {
+  color: #d8d0df;
+  line-height: 1.6;
+}
+.ending-panel .ending-note {
+  padding-left: 1em;
+  border-left: 2px solid #d8a9c1;
+  color: #bfb2ca;
+  font-size: .88em;
+}
+.ending-button {
+  align-self: flex-start;
+  border-radius: 999px;
+  background: linear-gradient(110deg, #efc5d7, #e6bd86);
+  color: #2d2030;
+}
+.ending-credits {
+  margin-top: .4em;
+  color: rgba(225, 215, 232, .45);
+  font-size: .62em;
+  letter-spacing: .14em;
+}
+.ending-success { border-top: 3px solid #a7d4c4; }
+.ending-failure { border-top: 3px solid #e3a4b8; }
+
+@media (max-width: 700px) {
+  .ending-panel { padding: 1.3em; }
+  .ending-panel h2 { font-size: 1.8em; }
+}
